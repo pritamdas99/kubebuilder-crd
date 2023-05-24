@@ -1,0 +1,20 @@
+apiVersion: pritamdas.dev.pritamdas.dev/v1alpha1
+kind: Kluster
+metadata:
+  labels:
+    app.kubernetes.io/name: kluster
+    app.kubernetes.io/instance: kluster-sample
+    app.kubernetes.io/part-of: kubebuilder-crd
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubebuilder-crd
+  name: kluster-sample-2
+spec:
+  name:
+  replicas: 1
+  container:
+    image: "pritam99/api-server:0.0.1"
+    port: 8080
+  service:
+    serviceName: "my-service-2"
+    serviceType: "ClusterIP"
+    servicePort: 8080

@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - pritamdas.dev.pritamdas.dev
+  resources:
+  - klusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - pritamdas.dev.pritamdas.dev
+  resources:
+  - klusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - pritamdas.dev.pritamdas.dev
+  resources:
+  - klusters/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- pritamdas.dev_v1alpha1_kluster.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
