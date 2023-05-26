@@ -23,10 +23,15 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"time"
 )
 
@@ -161,11 +166,100 @@ func (r *KlusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}, nil
 }
 
+var (
+	deployOwnerKey = ".metadata.controller"
+	svcOwnerKey    = ".metadata.controller"
+	ourApiGVStr    = v1alpha1.GroupVersion.String()
+	ourKind        = "Kluster"
+)
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *KlusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, deployOwnerKey, func(object client.Object) []string {
+		deployment := object.(*appsv1.Deployment)
+		owner := metav1.GetControllerOf(deployment)
+		if owner == nil {
+			return nil
+		}
+		if owner.APIVersion != ourApiGVStr || owner.Kind != ourKind {
+			return nil
+		}
+		return []string{owner.Name}
+
+	}); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, svcOwnerKey, func(object client.Object) []string {
+		svc := object.(*corev1.Service)
+		owner := metav1.GetControllerOf(svc)
+		if owner == nil {
+			return nil
+		}
+		if owner.APIVersion != ourApiGVStr || owner.Kind != ourKind {
+			return nil
+		}
+		return []string{owner.Name}
+
+	}); err != nil {
+		return err
+	}
+
+	handlerForDeployment := handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+
+		klusters := &v1alpha1.KlusterList{}
+		if err := r.List(context.Background(), klusters); err != nil {
+			return nil
+		}
+		var request []reconcile.Request
+		for _, deploy := range klusters.Items {
+			deploymentName := func() string {
+				name := deploy.Name + "-" + deploy.Spec.Name
+				if deploy.Spec.Name == "" {
+					name = name + "missing"
+				}
+				return name
+			}()
+
+			if deploymentName == obj.GetName() && deploy.Namespace == obj.GetNamespace() {
+				dummy := &appsv1.Deployment{}
+				if err := r.Get(context.Background(), types.NamespacedName{
+					Namespace: obj.GetNamespace(),
+					Name:      obj.GetName(),
+				}, dummy); err != nil {
+
+					if errors.IsNotFound(err) {
+						request = append(request, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Namespace: deploy.Namespace,
+								Name:      deploy.Name,
+							},
+						})
+						continue
+					} else {
+						return nil
+					}
+				}
+
+				if dummy.Spec.Replicas != deploy.Spec.Replicas {
+					request = append(request, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: deploy.Namespace,
+							Name:      deploy.Name,
+						},
+					})
+				}
+			}
+
+		}
+		return request
+
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Kluster{}).
-		Owns(&appsv1.Deployment{}).
+		Watches(&source.Kind{Type: &appsv1.Deployment{}}, handlerForDeployment).
 		Owns(&corev1.Service{}).
 		Complete(r)
 }
