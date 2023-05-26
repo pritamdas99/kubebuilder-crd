@@ -150,9 +150,11 @@ func (r *KlusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	} else {
 		if kluster.Spec.Replicas != nil && *kluster.Spec.Replicas != kluster.Status.AvilableReplicas {
 			fmt.Println(*kluster.Spec.Replicas, kluster.Status.AvilableReplicas)
+			var kluster_deep *v1alpha1.Kluster
+			kluster_deep = kluster.DeepCopy()
 			fmt.Printf("Is it problem?\nService replica missmatch...")
-			kluster.Status.AvilableReplicas = *kluster.Spec.Replicas
-			if err := r.Status().Update(ctx, &kluster); err != nil {
+			kluster_deep.Status.AvilableReplicas = *kluster.Spec.Replicas
+			if err := r.Status().Update(ctx, kluster_deep); err != nil {
 				fmt.Printf("error updating service %s\n", err)
 				return ctrl.Result{}, err
 			}
