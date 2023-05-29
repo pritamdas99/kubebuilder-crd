@@ -91,22 +91,23 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// deploymentObject carry the all data of deployment in specific namespace and name
 	var deploymentObject appsv1.Deployment
-	deploymentName := pritam.Spec.Name
-	serviceName := pritam.Spec.Name
+
 	if pritam.Spec.Name == "" {
-		deploymentName = strings.Join(buildSlice(pritam.Name, v1alpha1.Deployment), "-")
-		serviceName = strings.Join(buildSlice(pritam.Name, v1alpha1.Service), "-")
+		//	pritam_deep := pritam.DeepCopy()
+		pritam.Spec.Name = pritam.Name
+		r.Update(ctx, &pritam)
+		logger.Println("updated pritam", pritam.Spec.Name, "again", pritam.Name)
 	}
 
 	objectKey := client.ObjectKey{
 		Namespace: req.Namespace,
-		Name:      deploymentName,
+		Name:      pritam.Spec.Name,
 	}
 
 	if err := r.Get(ctx, objectKey, &deploymentObject); err != nil {
 		if errors.IsNotFound(err) {
 			logger.Println("could not find existing Deployment for ", pritam.Name, " creating one...")
-			err := r.Create(ctx, newDeployment(&pritam, deploymentName))
+			err := r.Create(ctx, newDeployment(&pritam))
 			if err != nil {
 				logger.Printf("error while creteing depluoyment %s\n", err)
 				return ctrl.Result{}, err
@@ -144,13 +145,13 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	var serviceObject corev1.Service
 	objectKey = client.ObjectKey{
 		Namespace: req.Namespace,
-		Name:      serviceName,
+		Name:      strings.Join(buildSlice(pritam.Spec.Name, v1alpha1.Service), "-"),
 	}
 
 	if err := r.Get(ctx, objectKey, &serviceObject); err != nil {
 		if errors.IsNotFound(err) {
 			logger.Println("could not find existing Service for ", pritam.Name, " creating one...")
-			err := r.Create(ctx, newService(&pritam, serviceName, deploymentName))
+			err := r.Create(ctx, newService(&pritam))
 			if err != nil {
 				logger.Printf("error while creating Service %s\n", err)
 				return ctrl.Result{}, err
@@ -158,8 +159,8 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Printf("%s Service created...\n", pritam.Name)
 
 		}
-		logger.Printf("error fetchiong service %s\n", err)
-		return ctrl.Result{}, err
+		//logger.Printf("error fetchiong service %s\n", err)
+		//return ctrl.Result{}, err
 
 	}
 	logger.Printf("service updated")

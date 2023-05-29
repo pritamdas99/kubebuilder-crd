@@ -9,10 +9,11 @@ import (
 	"strings"
 )
 
-func newDeployment(pritam *controllerv1.Pritam, deploymentName string) *appsv1.Deployment {
+func newDeployment(pritam *controllerv1.Pritam) *appsv1.Deployment {
+
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      deploymentName,
+			Name:      pritam.Spec.Name,
 			Namespace: pritam.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 
@@ -23,13 +24,13 @@ func newDeployment(pritam *controllerv1.Pritam, deploymentName string) *appsv1.D
 			Replicas: pritam.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": strings.Join(buildSlice(controllerv1.Myapp, deploymentName), "-"),
+					"app": strings.Join(buildSlice(controllerv1.Myapp, pritam.Spec.Name), "-"),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": strings.Join(buildSlice(controllerv1.Myapp, deploymentName), "-"),
+						"app": strings.Join(buildSlice(controllerv1.Myapp, pritam.Spec.Name), "-"),
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -52,16 +53,16 @@ func newDeployment(pritam *controllerv1.Pritam, deploymentName string) *appsv1.D
 	}
 }
 
-func newService(pritam *controllerv1.Pritam, name string, dep_name string) *corev1.Service {
+func newService(pritam *controllerv1.Pritam) *corev1.Service {
 	labels := map[string]string{
-		"app": strings.Join(buildSlice(controllerv1.Myapp, dep_name), "-"),
+		"app": strings.Join(buildSlice(controllerv1.Myapp, pritam.Spec.Name), "-"),
 	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      strings.Join(buildSlice(pritam.Spec.Name, controllerv1.Service), "-"),
 			Namespace: pritam.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pritam, controllerv1.GroupVersion.WithKind("Pritam")),
