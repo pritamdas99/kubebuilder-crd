@@ -1,16 +1,16 @@
 apiVersion: pritamdas.dev.pritamdas.dev/v1alpha1
-kind: Kluster
+kind: Pritam
 metadata:
   labels:
-    app.kubernetes.io/name: kluster
-    app.kubernetes.io/instance: kluster-sample
+    app.kubernetes.io/name: pritam
+    app.kubernetes.io/instance: pritam-sample
     app.kubernetes.io/part-of: kubebuilder-crd
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kubebuilder-crd
-  name: kluster-sample-1
+  name: pritam-sample-1
 spec:
   name: my-deployment-1
-  replicas: 3
+  replicas: 4
   container:
     image: "pritam99/api-server:0.0.1"
     port: 8080

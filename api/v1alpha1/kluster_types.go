@@ -37,8 +37,8 @@ type ServiceSpec struct {
 	ServicePort     int32 `json:"servicePort"`
 }
 
-// KlusterSpec defines the desired state of Kluster
-type KlusterSpec struct {
+// PritamSpec defines the desired state of Pritam
+type PritamSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -48,8 +48,8 @@ type KlusterSpec struct {
 	Service   ServiceSpec   `json:"service,omitempty"`
 }
 
-// KlusterStatus defines the observed state of Kluster
-type KlusterStatus struct {
+// PritamStatus defines the observed state of Pritam
+type PritamStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	AvilableReplicas int32 `json:"availableReplicas"`
@@ -58,24 +58,24 @@ type KlusterStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// Kluster is the Schema for the klusters API
-type Kluster struct {
+// Pritam is the Schema for the Pritams API
+type Pritam struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KlusterSpec   `json:"spec,omitempty"`
-	Status KlusterStatus `json:"status,omitempty"`
+	Spec   PritamSpec   `json:"spec,omitempty"`
+	Status PritamStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// KlusterList contains a list of Kluster
-type KlusterList struct {
+// PritamList contains a list of Pritam
+type PritamList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Kluster `json:"items"`
+	Items           []Pritam `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Kluster{}, &KlusterList{})
+	SchemeBuilder.Register(&Pritam{}, &PritamList{})
 }

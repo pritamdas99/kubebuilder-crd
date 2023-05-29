@@ -6,41 +6,42 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"strings"
 )
 
-func newDeployment(kluster *controllerv1.Kluster, deploymentName string) *appsv1.Deployment {
+func newDeployment(pritam *controllerv1.Pritam, deploymentName string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deploymentName,
-			Namespace: kluster.Namespace,
+			Namespace: pritam.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 
-				*metav1.NewControllerRef(kluster, controllerv1.GroupVersion.WithKind("Kluster")),
+				*metav1.NewControllerRef(pritam, controllerv1.GroupVersion.WithKind("Pritam")),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: kluster.Spec.Replicas,
+			Replicas: pritam.Spec.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "my-app" + "-" + deploymentName,
+					"app": strings.Join(buildSlice(controllerv1.Myapp, deploymentName), "-"),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "my-app" + "-" + deploymentName,
+						"app": strings.Join(buildSlice(controllerv1.Myapp, deploymentName), "-"),
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
 							Name:  "my-app",
-							Image: kluster.Spec.Container.Image,
+							Image: pritam.Spec.Container.Image,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "http",
 									Protocol:      corev1.ProtocolTCP,
-									ContainerPort: kluster.Spec.Container.Port,
+									ContainerPort: pritam.Spec.Container.Port,
 								},
 							},
 						},
@@ -51,9 +52,9 @@ func newDeployment(kluster *controllerv1.Kluster, deploymentName string) *appsv1
 	}
 }
 
-func newService(kluster *controllerv1.Kluster, name string, dep_name string) *corev1.Service {
+func newService(pritam *controllerv1.Pritam, name string, dep_name string) *corev1.Service {
 	labels := map[string]string{
-		"app": "my-app" + "-" + dep_name,
+		"app": strings.Join(buildSlice(controllerv1.Myapp, dep_name), "-"),
 	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -61,9 +62,9 @@ func newService(kluster *controllerv1.Kluster, name string, dep_name string) *co
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: kluster.Namespace,
+			Namespace: pritam.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(kluster, controllerv1.GroupVersion.WithKind("Kluster")),
+				*metav1.NewControllerRef(pritam, controllerv1.GroupVersion.WithKind("Pritam")),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -72,8 +73,8 @@ func newService(kluster *controllerv1.Kluster, name string, dep_name string) *co
 			Ports: []corev1.ServicePort{
 				{
 					Protocol:   "TCP",
-					Port:       kluster.Spec.Container.Port,
-					TargetPort: intstr.FromInt(int(kluster.Spec.Container.Port)),
+					Port:       pritam.Spec.Container.Port,
+					TargetPort: intstr.FromInt(int(pritam.Spec.Container.Port)),
 				},
 			},
 		},

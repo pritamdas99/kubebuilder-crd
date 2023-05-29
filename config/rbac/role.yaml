@@ -8,7 +8,7 @@ rules:
 - apiGroups:
   - pritamdas.dev.pritamdas.dev
   resources:
-  - klusters
+  - pritams
   verbs:
   - create
   - delete
@@ -20,13 +20,13 @@ rules:
 - apiGroups:
   - pritamdas.dev.pritamdas.dev
   resources:
-  - klusters/finalizers
+  - pritams/finalizers
   verbs:
   - update
 - apiGroups:
   - pritamdas.dev.pritamdas.dev
   resources:
-  - klusters/status
+  - pritams/status
   verbs:
   - get
   - patch
