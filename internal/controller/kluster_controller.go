@@ -93,10 +93,13 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	var deploymentObject appsv1.Deployment
 
 	if pritam.Spec.Name == "" {
-		//	pritam_deep := pritam.DeepCopy()
+		//pritam_deep := pritam.DeepCopy()
+		//logger.Println(">>>>>>>>>>>>>>>>>>>>>>>", pritam_deep)
 		pritam.Spec.Name = pritam.Name
 		r.Update(ctx, &pritam)
-		logger.Println("updated pritam", pritam.Spec.Name, "again", pritam.Name)
+		//pritam = *pritam_deep
+
+		logger.Println("updated pritam undeep", pritam.Spec.Name, "deep", pritam.Spec.Name)
 	}
 
 	objectKey := client.ObjectKey{
@@ -113,6 +116,7 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				return ctrl.Result{}, err
 			}
 			logger.Printf("%s deployment created...\n", pritam.Name)
+			return ctrl.Result{}, err
 
 		}
 		logger.Printf("error fetchiong deploymewnt %s\n", err)
@@ -157,10 +161,11 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				return ctrl.Result{}, err
 			}
 			logger.Printf("%s Service created...\n", pritam.Name)
+			return ctrl.Result{}, err
 
 		}
 		//logger.Printf("error fetchiong service %s\n", err)
-		//return ctrl.Result{}, err
+		return ctrl.Result{}, err
 
 	}
 	logger.Printf("service updated")
