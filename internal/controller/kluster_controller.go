@@ -92,19 +92,22 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// deploymentObject carry the all data of deployment in specific namespace and name
 	var deploymentObject appsv1.Deployment
 
-	if pritam.Spec.Name == "" {
-		//pritam_deep := pritam.DeepCopy()
-		//logger.Println(">>>>>>>>>>>>>>>>>>>>>>>", pritam_deep)
-		pritam.Spec.Name = pritam.Name
-		r.Update(ctx, &pritam)
-		//pritam = *pritam_deep
-
-		logger.Println("updated pritam undeep", pritam.Spec.Name, "deep", pritam.Spec.Name)
-	}
+	//if pritam.Spec.Name == "" {
+	//	//pritam_deep := pritam.DeepCopy()
+	//	//logger.Println(">>>>>>>>>>>>>>>>>>>>>>>", pritam_deep)
+	//	pritam.Spec.Name = pritam.Name
+	//	r.Update(ctx, &pritam)
+	//	//pritam = *pritam_deep
+	//
+	//	logger.Println("updated pritam undeep", pritam.Spec.Name, "deep", pritam.Spec.Name)
+	//}
 
 	objectKey := client.ObjectKey{
 		Namespace: req.Namespace,
 		Name:      pritam.Spec.Name,
+	}
+	if objectKey.Name == "" {
+		objectKey.Name = strings.Join(buildSlice(pritam.Name, v1alpha1.Deployment), "-")
 	}
 
 	if err := r.Get(ctx, objectKey, &deploymentObject); err != nil {
@@ -132,12 +135,12 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}
 			logger.Println("deployment updated")
 		}
-		if pritam.Spec.Replicas != nil && *pritam.Spec.Replicas != pritam.Status.AvilableReplicas {
+		if pritam.Spec.Replicas != nil && *deploymentObject.Spec.Replicas != pritam.Status.AvilableReplicas {
 			logger.Println(*pritam.Spec.Replicas, pritam.Status.AvilableReplicas)
 			var pritam_deep *v1alpha1.Pritam
 			pritam_deep = pritam.DeepCopy()
 			logger.Printf("Is it problem?\nService replica missmatch...")
-			pritam_deep.Status.AvilableReplicas = *pritam.Spec.Replicas
+			pritam_deep.Status.AvilableReplicas = *deploymentObject.Spec.Replicas
 			if err := r.Status().Update(ctx, pritam_deep); err != nil {
 				logger.Printf("error updating status %s\n", err)
 				return ctrl.Result{}, err
@@ -149,7 +152,11 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	var serviceObject corev1.Service
 	objectKey = client.ObjectKey{
 		Namespace: req.Namespace,
-		Name:      strings.Join(buildSlice(pritam.Spec.Name, v1alpha1.Service), "-"),
+		Name:      pritam.Spec.Name,
+	}
+
+	if objectKey.Name == "" {
+		objectKey.Name = strings.Join(buildSlice(pritam.Name, v1alpha1.Service), "-")
 	}
 
 	if err := r.Get(ctx, objectKey, &serviceObject); err != nil {
@@ -177,22 +184,19 @@ func (r *PritamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 }
 
 var (
-	deployOwnerKey = ".metadata.controller"
-	svcOwnerKey    = ".metadata.controller"
-	ourApiGVStr    = v1alpha1.GroupVersion.String()
-	ourKind        = "Pritam"
+	ourApiGVStr = v1alpha1.GroupVersion.String()
 )
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PritamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, deployOwnerKey, func(object client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsv1.Deployment{}, v1alpha1.DeployOwnerKey, func(object client.Object) []string {
 		deployment := object.(*appsv1.Deployment)
 		owner := metav1.GetControllerOf(deployment)
 		if owner == nil {
 			return nil
 		}
-		if owner.APIVersion != ourApiGVStr || owner.Kind != ourKind {
+		if owner.APIVersion != ourApiGVStr || owner.Kind != v1alpha1.OurKind {
 			return nil
 		}
 		return []string{owner.Name}
@@ -201,13 +205,13 @@ func (r *PritamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, svcOwnerKey, func(object client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Service{}, v1alpha1.SvcOwnerKey, func(object client.Object) []string {
 		svc := object.(*corev1.Service)
 		owner := metav1.GetControllerOf(svc)
 		if owner == nil {
 			return nil
 		}
-		if owner.APIVersion != ourApiGVStr || owner.Kind != ourKind {
+		if owner.APIVersion != ourApiGVStr || owner.Kind != v1alpha1.OurKind {
 			return nil
 		}
 		return []string{owner.Name}
@@ -223,16 +227,16 @@ func (r *PritamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return nil
 		}
 		var request []reconcile.Request
-		for _, deploy := range pritams.Items {
+		for _, pritam := range pritams.Items {
 			deploymentName := func() string {
-				name := deploy.Spec.Name
-				if deploy.Spec.Name == "" {
-					name = strings.Join(buildSlice(deploy.Name, v1alpha1.Deployment), "-")
+				name := pritam.Spec.Name
+				if pritam.Spec.Name == "" {
+					name = strings.Join(buildSlice(pritam.Name, v1alpha1.Deployment), "-")
 				}
 				return name
 			}()
 
-			if deploymentName == obj.GetName() && deploy.Namespace == obj.GetNamespace() {
+			if deploymentName == obj.GetName() && pritam.Namespace == obj.GetNamespace() {
 				dummy := &appsv1.Deployment{}
 				if err := r.Get(context.Background(), types.NamespacedName{
 					Namespace: obj.GetNamespace(),
@@ -242,8 +246,8 @@ func (r *PritamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					if errors.IsNotFound(err) {
 						request = append(request, reconcile.Request{
 							NamespacedName: types.NamespacedName{
-								Namespace: deploy.Namespace,
-								Name:      deploy.Name,
+								Namespace: pritam.Namespace,
+								Name:      pritam.Name,
 							},
 						})
 						continue
@@ -252,11 +256,11 @@ func (r *PritamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					}
 				}
 
-				if dummy.Spec.Replicas != deploy.Spec.Replicas {
+				if dummy.Spec.Replicas != pritam.Spec.Replicas {
 					request = append(request, reconcile.Request{
 						NamespacedName: types.NamespacedName{
-							Namespace: deploy.Namespace,
-							Name:      deploy.Name,
+							Namespace: pritam.Namespace,
+							Name:      pritam.Name,
 						},
 					})
 				}
